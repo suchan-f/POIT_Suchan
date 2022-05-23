@@ -1,0 +1,158 @@
+<!DOCTYPE HTML>
+<html>
+ <head>
+  <title>Ovladanie</title>
+   <script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
+   <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.5/socket.io.min.js"></script>
+   <script src="static/libs/plotly-latest.min.js"></script>
+   <script src="static/libs/gauge.min.js"></script>
+    <script src="static/jquery-3.2.1.min.js"></script>
+    <script src="static/jquery-ui.min.js"></script>
+   
+   <script type="text/javascript" charset="utf-8">
+     $(document).ready(function() {
+      var x = new Array();
+      var y = new Array();
+      var trace;
+      var layout;
+      
+      //zaciatok cifernika
+      var gauge = new RadialGauge({
+          renderTo: 'canvasID',
+          width: 300,
+          height: 300,
+          units: "Data",
+          minValue: 0,
+          maxValue: 1000,
+          majorTicks: [
+              "0",
+              "100",
+              "200",
+              "300",
+              "400",
+              "500",
+              "600",
+              "700",
+              "800",
+              "900",
+              "1000"
+          ],
+          minorTicks: 2,
+          strokeTicks: true,
+          highlights: [
+              {
+                  "from": 800,
+                  "to": 1000,
+                  "color": "rgba(200, 50, 50, .75)"
+              }
+          ],
+          colorPlate: "#fff",
+          borderShadowWidth: 2,
+          borders: true,
+          needleType: "arrow",
+          needleWidth: 2,
+          needleCircleSize: 7,
+          needleCircleOuter: true,
+          needleCircleInner: false,
+          animationDuration: 1500,
+          animationRule: "linear"
+      });
+      gauge.draw();
+      gauge.value = "0";
+      //koniec cifernika
+      
+      
+      namespace = '/test';
+      var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace);
+
+      // caka na data zo servera
+      socket.on('connect', function() {
+        socket.emit('my_event', {data: 'I\'m connected!', value: 1}); });
+      // caka na data zo servera
+      
+      socket.on('my_response', function(msg) {
+        console.log(msg.data);
+        $('#log').append('Received #'+msg.count+': '+msg.data+'<br>').html(); 
+        
+        x.push(parseFloat(msg.count));
+        y.push(parseFloat(msg.data));
+        trace = {
+            x: x,
+            y: y,
+        };       
+        layout = {
+          title: 'Data',
+          xaxis: {
+              title: 'x',
+          },
+          yaxis: {
+              title: 'y',//range: [-1,1]
+              
+          }
+        };
+        console.log(trace);
+        var traces = new Array();
+        traces.push(trace);
+        Plotly.newPlot($('#plotdiv')[0], traces, layout); //Graph
+             
+        console.log(msg.data);
+        $('#log').append('Received #'+msg.count+': '+msg.data+'<br>').html(); 
+        gauge.value = msg.data;                  
+        });
+      
+      
+      //posiela na server 
+      $('form#emit').submit(function(event) {
+          socket.emit('my_event', {value: $('#emit_value').val()});
+          return false; });
+     
+     
+     //posiela na server      
+      $('#start').click(function(event) {
+          console.log($('#start').val());
+          socket.emit('start', {value: $('#start').val()});
+          return false; });
+        
+        
+         //posiela na server  
+      $('#stop').click(function(event) {
+          console.log($('#stop').val());
+          socket.emit('stop', {value: $('#stop').val()});
+          return false; });
+         
+         
+          //posiela na server 
+      $('form#disconnect').submit(function(event) {
+          socket.emit('disconnect_request');
+          return false; });         
+      });
+    </script>
+ 
+ 
+ 
+ </head>
+ <body>
+  <h1> Ovladanie diody a meranie intenzity svetla</h1>
+  <h2>Zadaj hodnoty svietenia diody od 0 po 255 </h2>
+  
+  <!--FORMULAR 1- POLE A TLACITKO -->
+  <form id="emit" method="POST" action='#'>
+    <input type="text" name="emit_value" id="emit_value" placeholder="Amplituda">
+    <input type="submit" value="Send">
+  </form>
+  
+  <button id="start" type="submit" value=1>start</button>
+  <button id="stop" type="submit" value=0>stop</button>
+  
+  <!--FORMULAR 2- TLACITKO -->
+  <form id="disconnect" method="POST" action="#">
+    <input type="submit" value="Disconnect">
+  </form> 
+  
+   <div id="plotdiv" style="width:600px;height:250px;"></div>
+  <div></div><canvas style="width:300px;height:300px;" id="canvasID"></canvas></div>
+      
+  <h2>Hodnoty senzora svetla:</h2>
+  <div id="log"></div>
+ </body>
+</html>
